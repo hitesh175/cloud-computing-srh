@@ -31,3 +31,24 @@ We chose **Lambda**, because Brightwave's data really does arrive in two forms. 
 - **Freshness:** shipment events reach BigQuery live within seconds to minutes, which meets the 5-minute target. Rates and delay per lane are up to a day old, which is acceptable for a monthly reliability trend.
 - **Complexity:** two pipelines to build, run and monitor instead of one, plus the new late-flight alert.
 - **What gets harder:** the same logic, such as "what counts as late", can exist in two places (the streaming job and the batch SQL), and the two must be kept consistent. If the two layers disagree, the ops view and the exec view can show different numbers.
+
+## Cost check (stretch)
+
+Rough monthly estimate, box by box, from Google Cloud's published prices (November 2026). Brightwave's data volume: about 190 shipments a month on 3 lanes, about 2 MB of batch files.
+
+| Box | Layer | How it's billed | Estimate per month |
+|---|---|---|---|
+| Pub/Sub | Live | Throughput; a few MB of tracking events | < $0.01 |
+| Dataflow (1 vCPU, 3.75 GB worker, 730 h) | Live | Per second, always on: $0.056/vCPU-h + $0.003557/GB-h | ≈ $51 (lower bound) |
+| BigQuery live + curated storage | Both | First 10 GiB free | $0 |
+| BigQuery queries (ops view, exec view, delay per lane, alert check) | Both | First 1 TiB scanned free | $0 |
+| Cloud Storage (raw files) | Batch | About 2 MB stored | < $0.01 |
+| Late-flight alert (scheduled query every 5 min) | Live | Covered by the BigQuery free tier | $0 |
+| Ops view and exec view (Data Studio) | Both | Free | $0 |
+| **Total as drawn** | | | **≈ $51: over the $35 budget** |
+
+**Does the design fit the budget?** No. The always-on Dataflow worker alone costs more than Brightwave's $35 per month, and every other box is close to free.
+
+**What we would change:** replace Dataflow with a **Pub/Sub BigQuery subscription**, which writes events straight into the live table. It is billed at $50 per TiB of throughput, so Brightwave's few MB a month cost under a cent, and there are no BigQuery ingestion charges. The new total is **under $1 per month**, well inside the budget. Events still reach BigQuery within seconds, so the 5-minute freshness target is still met. This is still a Lambda architecture: the speed layer just becomes Pub/Sub → BigQuery live.
+
+**Trade-off:** without Dataflow we can't transform events in flight (windowing, deduplication, enrichment). The late-flight check moves into a scheduled BigQuery query instead. If event volume or logic grows, we revisit this in a new ADR.
