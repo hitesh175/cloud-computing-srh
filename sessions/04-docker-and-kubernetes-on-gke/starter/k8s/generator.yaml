@@ -18,16 +18,16 @@ spec:
     spec:
       containers:
         - name: generator
-          # Replace PROJECT_ID with your project ID (step 5 does it for you).
-          image: europe-west3-docker.pkg.dev/PROJECT_ID/freight/generator:v1
+          # Replace project-410db1fc-cf1a-4d5d-a93 with your project ID (step 5 does it for you).
+          image: europe-west3-docker.pkg.dev/project-410db1fc-cf1a-4d5d-a93/freight/generator:v1
           args: ["stream"]
           env:
             - name: SINK
               value: stdout
             - name: MODE
-              value: both
+              value: air
             - name: RATE
-              value: "1"
+              value: "5"
           resources:
             requests:
               cpu: 50m
