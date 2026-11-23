@@ -25,9 +25,9 @@ spec:
             - name: SINK
               value: stdout
             - name: MODE
-              value: air
+              value: both
             - name: RATE
-              value: "5"
+              value: "1"
           resources:
             requests:
               cpu: 50m
